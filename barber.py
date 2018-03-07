@@ -1,2 +1,2 @@
 #
-# Adding content to play around with Git
+# Adding more content to play around with Git
