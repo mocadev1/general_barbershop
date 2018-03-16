@@ -14,22 +14,24 @@ import datetime
 # min_cut_time: The minimum amount of time it takes for the barber to cut hair
 # max_cut_time: The maximum amount of time it takes the barber to cut hair
 def barber(waiting_room, barber_resource, barbershop, min_cut_time, max_cut_time):
-    while True:
-        # print("{} Barber is awake".format(datetime.datetime.now()))  # No string formatting for a precise time output
+    # while True:
+        # print("{0} Barber is awake".format(datetime.datetime.now()))  # No string formatting for a precise time output
         try:
-            waiting_room.release()       # release a seat in the waiting room
-            barber_resource.release()    # signal that the haircut is in progress and the barber is not available (1)
+            # waiting_room.release()         # release a seat in the waiting room
 
             rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
 
             print("{0:%Y-%m-%d %H:%M:%S} - Waiting {1} seconds for haircut to complete"
                   .format(datetime.datetime.now(), rand_haircut_time))
             time.sleep(rand_haircut_time)  # Simulate hair cut
+
+            barber_resource.release()      # signal that the haircut is complete and the barber is available (1)
         except ValueError:
-            # Sleep (do nothing) or exit if shop is closed
-            if barbershop.acquire(False):
-                break
-    print("{0:%Y-%m-%d %H:%M:%S} - Barber is asleep".format(datetime.datetime.now()))
+            print("exception caught")
+    #        if barbershop.acquire(False):  # exit if shop is closed
+    #            break
+            # else Sleep (do nothing)
+    # print("{0:%Y-%m-%d %H:%M:%S} - Barber is asleep".format(datetime.datetime.now()))
 
 
 # customer
@@ -39,10 +41,12 @@ def barber(waiting_room, barber_resource, barbershop, min_cut_time, max_cut_time
 # number: The customer's spot in line
 def customer(waiting_room, barber_resource, number=0):
     print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store.".format(datetime.datetime.now(), number))
-    if waiting_room.acquire(False):
-        barber_resource.acquire()        # signal that the haircut is finished and the barber is available (0)
+    if waiting_room.acquire(False):  # check to see if a waiting room seat is available
+        barber_resource.acquire()    # attempt to acquire the barber (0)
         print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is getting a haircut.".format(datetime.datetime.now(), number))
-    else:   # else all seats are full
+
+        waiting_room.release()       # release a seat in the waiting room
+    else:                            # else all seats are full, customer leaves
         print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} could not find an open chair and is leaving."
               .format(datetime.datetime.now(), number))
         return
@@ -56,7 +60,7 @@ def customer(waiting_room, barber_resource, number=0):
 # Integer value randomly generated within the range defined by the parameters
 def get_random_interval(min_time, max_time):
     rand = Random()         # initialize the Random class
-    return rand.randint(   # return a random integer within range
+    return rand.randint(    # return a random integer within range
         min_time,
         max_time
     )
