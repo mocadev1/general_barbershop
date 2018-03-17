@@ -3,41 +3,52 @@ from threading import BoundedSemaphore, Thread
 
 import argparse
 import time
+import datetime
 
 
 # barber
 # args: 
-# seats_available: The semaphore controlling access to the waiting room
-# barber_available: The semaphore controlling access to the barber
-# close_barbershop: The semaphore controlling whether the barbershop is open
+# waiting_room: The semaphore controlling access to the waiting room
+# barber_resource: The semaphore controlling access to the barber
+# barbershop: The semaphore controlling access to the barbershop resource
 # min_cut_time: The minimum amount of time it takes for the barber to cut hair
 # max_cut_time: The maximum amount of time it takes the barber to cut hair
-def barber(seats_available, barber_available, close_barbershop, min_cut_time, max_cut_time):
-    while True:
-        # print("Barber is awake")
+def barber(waiting_room, barber_resource, barbershop, min_cut_time, max_cut_time):
+    # while True:
+        # print("{0} Barber is awake".format(datetime.datetime.now()))  # No string formatting for a precise time output
         try:
-            seats_available.release()       # release a seat in the waiting room
-            barber_available.release()      # signal that the haircut is in progress and the barber is not available (1)
-            time.sleep(get_random_interval(min_cut_time, max_cut_time))  # Simulate hair cut
+            # waiting_room.release()         # release a seat in the waiting room
+
+            rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
+
+            print("{0:%Y-%m-%d %H:%M:%S} - Waiting {1} seconds for haircut to complete"
+                  .format(datetime.datetime.now(), rand_haircut_time))
+            time.sleep(rand_haircut_time)  # Simulate hair cut
+
+            barber_resource.release()      # signal that the haircut is complete and the barber is available (1)
         except ValueError:
-            # Sleep (do nothing) or exit if shop is closed
-            if close_barbershop.acquire(False):
-                break
-    print("Barber is asleep")
+            print("exception caught")
+    #        if barbershop.acquire(False):  # exit if shop is closed
+    #            break
+            # else Sleep (do nothing)
+    # print("{0:%Y-%m-%d %H:%M:%S} - Barber is asleep".format(datetime.datetime.now()))
 
 
 # customer
 # args:
-# seats_available: The semaphore controlling access to the waiting room
-# barber_available: The semaphore controlling access to the barber
+# waiting_room: The semaphore controlling access to the waiting room
+# barber_resource: The semaphore controlling access to the barber
 # number: The customer's spot in line
-def customer(seats_available, barber_available, number=0):
-    print("Customer {} is entering the store.".format(number))
-    if seats_available.acquire(False):
-        barber_available.acquire()        # signal that the haircut is finished and the barber is available (0)
-        print("Customer {} is done getting a haircut.".format(number))   # print finished message
-    else:   # else all seats are full
-        print("Customer {} could not find an open chair and is leaving.".format(number))
+def customer(waiting_room, barber_resource, number=0):
+    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store.".format(datetime.datetime.now(), number))
+    if waiting_room.acquire(False):  # check to see if a waiting room seat is available
+        barber_resource.acquire()    # attempt to acquire the barber (0)
+        print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is getting a haircut.".format(datetime.datetime.now(), number))
+
+        waiting_room.release()       # release a seat in the waiting room
+    else:                            # else all seats are full, customer leaves
+        print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} could not find an open chair and is leaving."
+              .format(datetime.datetime.now(), number))
         return
 
 
@@ -68,17 +79,17 @@ def main(args):
 
     finish = time.time() + barber_duration                      # set end simulation time
 
-    seats_available = BoundedSemaphore(seats)  # initialize semaphore that indicates if waiting room seats are available
-    barber_available = BoundedSemaphore(1)     # initialize semaphore that indicates if the barber is available
-    close_barbershop = BoundedSemaphore(1)     # initialize semaphore that indicates if the barbershop is open
+    waiting_room = BoundedSemaphore(seats)  # initialize semaphore that indicates if waiting room seats are available
+    barber_resource = BoundedSemaphore(1)   # initialize semaphore that indicates if the barber is available
+    barbershop = BoundedSemaphore(1)        # initialize semaphore that indicates if the barbershop is available
 
-    barber_available.acquire()                       # set barber state to available (0)
-    close_barbershop.acquire()                       # set barbershop state to open (0)
+    print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop".format(datetime.datetime.now()))
+    barbershop.acquire()                    # acquire the barbershop resource for use (open the shop) (0)
 
     threads = [Thread(target=barber,                 # initialize barber thread
-                      args=(seats_available,
-                            barber_available,
-                            close_barbershop,
+                      args=(waiting_room,
+                            barber_resource,
+                            barbershop,
                             min_cut_time,
                             max_cut_time))]
     threads[0].start()                               # start barber thread
@@ -86,8 +97,8 @@ def main(args):
     i = 0                                            # initialize thread counter
     while time.time() < finish:                      # while simulation is running
         threads.append(Thread(target=customer,       # add a customer thread
-                              args=(seats_available,
-                                    barber_available,
+                              args=(waiting_room,
+                                    barber_resource,
                                     i)))
         threads[len(threads) - 1].start()            # start the next customer thread
 
@@ -96,10 +107,13 @@ def main(args):
             min_customer_time,
             max_customer_time
         )
+
+        print("{0:%Y-%m-%d %H:%M:%S} - Waiting {1} seconds for next customer"
+              .format(datetime.datetime.now(), rand_sleep_time))
         time.sleep(rand_sleep_time)                  # wait for next customer to arrive
 
-    print("Closing barbershop")     # when simulation time is up
-    close_barbershop.release()      # set barbershop state to closed (1)
+    print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop".format(datetime.datetime.now()))     # when simulation time is up
+    barbershop.release()            # release the barbershop resource (close the shop) (1)
     for thread in threads:          # cleanup child threads
         thread.join()
 
@@ -113,10 +127,14 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--seats', type=int, default=3,
                         help="number of seats in barbershop")
     # Interpret -d as ow long the barbershop simulation will run in seconds
-    parser.add_argument('-d', '--duration', type=int, default=60,  # default=30,
+    parser.add_argument('-d', '--duration', type=int, default=30,
                         help="how long the barbershop is open (seconds)")
+    # parser.add_argument('-d', '--duration', type=int, default=60,
+    #                     help="how long the barbershop is open (seconds)")
     # Interpret -c as how long a haircut will take in seconds (range)
-    parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,  # default=[1, 1], nargs=2,
+    # parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,
+    #                     help="range of times for how long a haircut takes (seconds)")
+    parser.add_argument('-c', '--cutrange', type=int, default=[1, 1], nargs=2,
                         help="range of times for how long a haircut takes (seconds)")
     # Interpret -w as how long it takes for a new customer to arrive (seconds)
     parser.add_argument('-w', '--waitrange', type=int, default=[1, 6], nargs=2,
