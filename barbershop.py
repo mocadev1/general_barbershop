@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--seats', type=int, default=3,
                         help="number of seats in barbershop")
     # Interpret -d as ow long the barbershop simulation will run in seconds
-    parser.add_argument('-d', '--duration', type=int, default=15,
+    parser.add_argument('-d', '--duration', type=int, default=20,
                         help="how long the barbershop is open (seconds)")
     # Interpret -c as how long a haircut will take in seconds (range)
     parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,
