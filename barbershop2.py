@@ -44,17 +44,17 @@ def barber():
             if not barber_resource.acquire(False):
                 barber_resource.release()      # signal that the haircut is complete and the barber is available
 
-            print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut".format(datetime.datetime.now()))
+            print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
         else:
             mutex.release()
             go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
         if barbershop.acquire(False):
             if waiting_customers == 0:     # exit if shop is closed and all waiting customers have been served
-                print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers".format(datetime.datetime.now()))
+                print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
                 break
             else:
-                print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting"
+                print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
                       .format(datetime.datetime.now(), waiting_customers))
                 barbershop.release()
 
@@ -155,7 +155,7 @@ def main(args):
 
     finish = time.time() + barber_duration                 # set end simulation time
 
-    print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop".format(datetime.datetime.now()))
+    print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop.".format(datetime.datetime.now()))
     barbershop.acquire()                                   # acquire the barbershop resource for use (open the shop)
 
     threads = [Thread(target=barber)]                      # add a barber thread to a thread array
@@ -176,9 +176,9 @@ def main(args):
 
         time.sleep(rand_sleep_time)                        # wait for next customer to arrive
 
-    print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop".format(datetime.datetime.now()))  # when simulation time is up
+    print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop.".format(datetime.datetime.now()))  # when simulation time is up
     barbershop.release()                                   # release the barbershop resource (close the shop)
-    wake_up_barber("Barber wakes up and sees it's time to go home.")
+    wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Barber finds no customers waiting.".format(datetime.datetime.now()))
 
     for thread in threads:                                 # cleanup child threads
         thread.join()
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--duration', type=int, default=15,
                         help="how long the barbershop is open (seconds)")
     # Interpret -c as how long a haircut will take in seconds (range)
-    parser.add_argument('-c', '--cutrange', type=int, default=[1, 1], nargs=2,
+    parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,
                         help="range of times for how long a haircut takes (seconds)")
     # Interpret -w as how long it takes for a new customer to arrive (seconds)
     parser.add_argument('-w', '--waitrange', type=int, default=[1, 6], nargs=2,
