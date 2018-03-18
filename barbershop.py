@@ -29,35 +29,35 @@ def barber():
     global min_cut_time
     global max_cut_time
 
-    while True:
-        mutex.acquire()
-        if waiting_customers > 0:
-            waiting_customers -= 1
-            mutex.release()
+    mutex.acquire()
+    if waiting_customers > 0:
+        waiting_customers -= 1
+        mutex.release()
 
-            rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
-            time.sleep(rand_haircut_time)      # Simulate hair cut
+        rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
+        time.sleep(rand_haircut_time)      # Simulate hair cut
 
-            # check to make sure the barber_resource has been acquired before releasing, this prevents an exception
-            # from occurring when the barber thread starts while no customers are waiting and therefore trying to
-            # acquire the barber_resource
-            if not barber_resource.acquire(False):
-                barber_resource.release()      # signal that the haircut is complete and the barber is available
+        # check to make sure the barber_resource has been acquired before releasing, this prevents an exception
+        # from occurring when the barber thread starts while no customers are waiting and therefore trying to
+        # acquire the barber_resource
+        if not barber_resource.acquire(False):
+            barber_resource.release()      # signal that the haircut is complete and the barber is available
 
-            print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
-        else:
-            mutex.release()
-            print(str(datetime.datetime.now()) + " - " + str(waiting_customers) + " customer(s) waiting.")
-            go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
+        print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
+    else:
+        mutex.release()
+        print(str(datetime.datetime.now()) + " - " + str(waiting_customers) + " customer(s) waiting.")
+        go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
-        if barbershop.acquire(False):
-            if waiting_customers == 0:         # exit if shop is closed and all waiting customers have been served
-                print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
-                break
-            else:                              # serve any remaining customers if the shop has closed
-                print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
-                      .format(datetime.datetime.now(), waiting_customers))
-                barbershop.release()
+    if barbershop.acquire(False):
+        if waiting_customers == 0:         # exit if shop is closed and all waiting customers have been served
+            print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
+            return
+        else:                              # serve any remaining customers if the shop has closed
+            print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
+                  .format(datetime.datetime.now(), waiting_customers))
+            barbershop.release()
+    barber()
 
 
 # customer
