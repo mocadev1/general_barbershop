@@ -1,48 +1,94 @@
 from random import Random
-from threading import BoundedSemaphore, Thread
+from threading import BoundedSemaphore, Event, Thread
 
 import argparse
 import time
+import datetime
+
+barbershop = BoundedSemaphore(1)         # semaphore that indicates if the barbershop is available
+barber_resource = BoundedSemaphore(1)    # semaphore that indicates if the barber is available
+mutex = BoundedSemaphore(1)              # semaphore that insures exclusive access to the customers variable
+
+barber_sleeping_event = Event()          # event that, if set, indicates the barber is sleeping
+wake_up_barber_event = Event()           # event that, if set, will wake up the barber if they were sleeping
+
+max_waiting_customers = 3                # the default capacity of the waiting room
+min_cut_time = 1                         # the default minimum amount of time a haircut will take
+max_cut_time = 1                         # the default maximum amount of time a haircut will take
+
+waiting_customers = 0                    # the number of customers in the waiting room
 
 
 # barber
-# args: 
-# seats_available: The semaphore controlling access to the waiting room
-# barber_available: The semaphore controlling access to the barber
-# close_barbershop: The semaphore controlling whether the barbershop is open
-# min_cut_time: The minimum amount of time it takes for the barber to cut hair
-# max_cut_time: The maximum amount of time it takes the barber to cut hair
-def barber(seats_available, barber_available, close_barbershop, min_cut_time, max_cut_time):
+def barber():
+    # add global variables to the local scope of this function
+    global barbershop
+    global barber_resource
+    global mutex
+    global waiting_customers
+    global min_cut_time
+    global max_cut_time
+
     while True:
-        # print("Barber is awake")
-        try:
-            seats_available.release()       # release a seat in the waiting room
-            barber_available.release()      # signal that the haircut is in progress and the barber is not available (1)
-            time.sleep(get_random_interval(min_cut_time, max_cut_time))  # Simulate hair cut
-        except ValueError:
-            # Sleep (do nothing) or exit if shop is closed
-            if close_barbershop.acquire(False):
+        mutex.acquire()
+        if waiting_customers > 0:
+            waiting_customers -= 1
+            mutex.release()
+
+            rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
+            time.sleep(rand_haircut_time)      # Simulate hair cut
+
+            # check to make sure the barber_resource has been acquired before releasing, this prevents an exception
+            # from occurring when the barber thread starts while no customers are waiting and therefore trying to
+            # acquire the barber_resource
+            if not barber_resource.acquire(False):
+                barber_resource.release()      # signal that the haircut is complete and the barber is available
+
+            print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
+        else:
+            mutex.release()
+            go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
+
+        if barbershop.acquire(False):
+            if waiting_customers == 0:     # exit if shop is closed and all waiting customers have been served
+                print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
                 break
-    print("Barber is asleep")
+            else:
+                print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
+                      .format(datetime.datetime.now(), waiting_customers))
+                barbershop.release()
 
 
 # customer
-# args:
-# seats_available: The semaphore controlling access to the waiting room
-# barber_available: The semaphore controlling access to the barber
-# number: The customer's spot in line
-def customer(seats_available, barber_available, number=0):
-    print("Customer {} is entering the store.".format(number))
-    if seats_available.acquire(False):
-        barber_available.acquire()        # signal that the haircut is finished and the barber is available (0)
-        print("Customer {} is done getting a haircut.".format(number))   # print finished message
-    else:   # else all seats are full
-        print("Customer {} could not find an open chair and is leaving.".format(number))
-        return
+# customer_number: The number of the customer that has visited the barbershop
+def customer(customer_number=0):
+    # add global variables to the local scope of this function
+    global barber_resource
+    global mutex
+    global waiting_customers
+    global max_waiting_customers
+
+    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store."
+          .format(datetime.datetime.now(), customer_number))
+    mutex.acquire()
+        
+    if waiting_customers < max_waiting_customers:
+        wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is waking up the barber."
+                       .format(datetime.datetime.now(), customer_number))
+
+        waiting_customers += 1
+
+        mutex.release()
+        barber_resource.acquire()
+        print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is getting a haircut."
+              .format(datetime.datetime.now(), customer_number))
+    else:
+        mutex.release()
+        print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} could not find an open chair and is leaving."
+              .format(datetime.datetime.now(), customer_number))
 
 
 # get_random_interval
-# args:
 # min_time: The minimum amount of time allowed
 # max_time: The maximum amount of time allowed
 # return:
@@ -55,52 +101,86 @@ def get_random_interval(min_time, max_time):
     )
 
 
+# go_to_sleep
+# message: The message to print when going to sleep. Can be empty.
+def go_to_sleep(message=""):
+    global barber_sleeping_event
+    global wake_up_barber_event
+    global mutex
+
+    mutex.acquire()
+    if message:
+        print(message)
+    barber_sleeping_event.set()
+    mutex.release()
+    wake_up_barber_event.wait()
+    # Acquire mutex to ensure the barber indicates they were awoken and no longer sleeping
+    # This ensures no incoming customer tries to wake up the barber after they already woke up.
+    mutex.acquire()
+    wake_up_barber_event.clear()
+    barber_sleeping_event.clear()
+    mutex.release()
+
+
+# go_to_sleep
+# message: The message to print when waking up the barber. Can be empty.
+def wake_up_barber(message=""):
+    global barber_sleeping_event
+    global wake_up_barber_event
+    global waiting_customers
+
+    if waiting_customers == 0 and barber_sleeping_event.is_set():
+        if message:
+            print(message)
+        wake_up_barber_event.set()
+
+
 # main
 # args: The parsed command line inputs
 # Spawns new customers while the barbershop is open.
-# Closes barbershop when the specified time limit is up.
+# Closes barbershop when the specified time limit has elapsed.
 def main(args):
-    # parse from args array into local vars
-    seats = args.seats                                          # number of seats in the barbershop
-    barber_duration = args.duration                             # number of seconds to run simulation
-    min_customer_time, max_customer_time = args.waitrange       # range of seconds to wait between customer arrivals
-    min_cut_time, max_cut_time = args.cutrange                  # range of time it takes barber to cut hair
+    # add global variables to the local scope of this function
+    global max_waiting_customers
+    global min_cut_time
+    global max_cut_time
 
-    finish = time.time() + barber_duration                      # set end simulation time
+    # parse from args array into global variables, this information is needed in the threads
+    max_waiting_customers = args.seats                     # number of seats in the barbershop
+    min_cut_time, max_cut_time = args.cutrange             # range of time it takes barber to cut hair
 
-    seats_available = BoundedSemaphore(seats)  # initialize semaphore that indicates if waiting room seats are available
-    barber_available = BoundedSemaphore(1)     # initialize semaphore that indicates if the barber is available
-    close_barbershop = BoundedSemaphore(1)     # initialize semaphore that indicates if the barbershop is open
+    # parse from args array into local variables
+    barber_duration = args.duration                        # number of seconds to run simulation
+    min_customer_time, max_customer_time = args.waitrange  # range of seconds to wait between customer arrivals
 
-    barber_available.acquire()                       # set barber state to available (0)
-    close_barbershop.acquire()                       # set barbershop state to open (0)
+    finish = time.time() + barber_duration                 # set end simulation time
 
-    threads = [Thread(target=barber,                 # initialize barber thread
-                      args=(seats_available,
-                            barber_available,
-                            close_barbershop,
-                            min_cut_time,
-                            max_cut_time))]
-    threads[0].start()                               # start barber thread
+    print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop.".format(datetime.datetime.now()))
+    barbershop.acquire()                                   # acquire the barbershop resource for use (open the shop)
 
-    i = 0                                            # initialize thread counter
-    while time.time() < finish:                      # while simulation is running
-        threads.append(Thread(target=customer,       # add a customer thread
-                              args=(seats_available,
-                                    barber_available,
-                                    i)))
-        threads[len(threads) - 1].start()            # start the next customer thread
+    threads = [Thread(target=barber)]                      # add a barber thread to a thread array
+    threads[0].start()                                     # start barber thread
 
-        i += 1                                       # increment customer counter
-        rand_sleep_time = get_random_interval(       # get a random time to sleep in range
+    customer_number = 0                                    # initialize customer counter
+    while time.time() < finish:                            # while simulation is running
+        customer_number += 1                               # increment customer counter
+        threads.append(Thread(target=customer,             # add a customer thread
+                              args=(customer_number,)))    # need a comma to pass single item into a tuple
+
+        threads[len(threads) - 1].start()                  # start the next customer thread
+
+        rand_sleep_time = get_random_interval(             # get a random time to sleep in range
             min_customer_time,
             max_customer_time
         )
-        time.sleep(rand_sleep_time)                  # wait for next customer to arrive
 
-    print("Closing barbershop")     # when simulation time is up
-    close_barbershop.release()      # set barbershop state to closed (1)
-    for thread in threads:          # cleanup child threads
+        time.sleep(rand_sleep_time)                        # wait for next customer to arrive
+
+    print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop.".format(datetime.datetime.now()))  # when simulation time is up
+    barbershop.release()                                   # release the barbershop resource (close the shop)
+    wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Barber finds no customers waiting.".format(datetime.datetime.now()))
+
+    for thread in threads:                                 # cleanup child threads
         thread.join()
 
 
@@ -113,10 +193,10 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--seats', type=int, default=3,
                         help="number of seats in barbershop")
     # Interpret -d as ow long the barbershop simulation will run in seconds
-    parser.add_argument('-d', '--duration', type=int, default=60,  # default=30,
+    parser.add_argument('-d', '--duration', type=int, default=15,
                         help="how long the barbershop is open (seconds)")
     # Interpret -c as how long a haircut will take in seconds (range)
-    parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,  # default=[1, 1], nargs=2,
+    parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,
                         help="range of times for how long a haircut takes (seconds)")
     # Interpret -w as how long it takes for a new customer to arrive (seconds)
     parser.add_argument('-w', '--waitrange', type=int, default=[1, 6], nargs=2,
