@@ -50,10 +50,10 @@ def barber():
             go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
         if barbershop.acquire(False):
-            if waiting_customers == 0:     # exit if shop is closed and all waiting customers have been served
+            if waiting_customers == 0:         # exit if shop is closed and all waiting customers have been served
                 print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
                 break
-            else:
+            else:                              # serve any remaining customers if the shop has closed
                 print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
                       .format(datetime.datetime.now(), waiting_customers))
                 barbershop.release()
@@ -72,17 +72,17 @@ def customer(customer_number=0):
           .format(datetime.datetime.now(), customer_number))
     mutex.acquire()
         
-    if waiting_customers < max_waiting_customers:
+    if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut
         wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is waking up the barber."
                        .format(datetime.datetime.now(), customer_number))
 
-        waiting_customers += 1
+        waiting_customers += 1                      # increment the number of waiting customers
 
         mutex.release()
         barber_resource.acquire()
         print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is getting a haircut."
               .format(datetime.datetime.now(), customer_number))
-    else:
+    else:                                           # if no seats are available, customer leaves
         mutex.release()
         print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} could not find an open chair and is leaving."
               .format(datetime.datetime.now(), customer_number))
@@ -94,8 +94,8 @@ def customer(customer_number=0):
 # return:
 # Integer value randomly generated within the range defined by the parameters
 def get_random_interval(min_time, max_time):
-    rand = Random()         # initialize the Random class
-    return rand.randint(    # return a random integer within range
+    rand = Random()                                 # initialize the Random class
+    return rand.randint(                            # return a random integer within range
         min_time,
         max_time
     )
@@ -109,16 +109,22 @@ def go_to_sleep(message=""):
     global mutex
 
     mutex.acquire()
+
     if message:
         print(message)
     barber_sleeping_event.set()
+
     mutex.release()
+
     wake_up_barber_event.wait()
+
     # Acquire mutex to ensure the barber indicates they were awoken and no longer sleeping
     # This ensures no incoming customer tries to wake up the barber after they already woke up.
     mutex.acquire()
+
     wake_up_barber_event.clear()
     barber_sleeping_event.clear()
+
     mutex.release()
 
 
@@ -129,10 +135,11 @@ def wake_up_barber(message=""):
     global wake_up_barber_event
     global waiting_customers
 
-    if waiting_customers == 0 and barber_sleeping_event.is_set():
+    if waiting_customers == 0 and barber_sleeping_event.is_set():  # if no waiting customers and barber is asleep
         if message:
             print(message)
-        wake_up_barber_event.set()
+
+        wake_up_barber_event.set()                                 # wake up the barber
 
 
 # main
