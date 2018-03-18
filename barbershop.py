@@ -47,6 +47,7 @@ def barber():
             print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
         else:
             mutex.release()
+            print(str(datetime.datetime.now()) + " - " + str(waiting_customers) + " customer(s) waiting.")
             go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
         if barbershop.acquire(False):
@@ -68,8 +69,9 @@ def customer(customer_number=0):
     global waiting_customers
     global max_waiting_customers
 
-    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store."
-          .format(datetime.datetime.now(), customer_number))
+    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store,"
+          .format(datetime.datetime.now(), customer_number) + " and finds "
+          + str(waiting_customers) + " customer(s) waiting.")
     mutex.acquire()
         
     if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut
