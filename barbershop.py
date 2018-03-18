@@ -213,5 +213,5 @@ if __name__ == "__main__":
     # Assign parsed arguments
     arguments = parser.parse_args()
 
-# Begin main
-main(arguments)
+    # Begin main
+    main(arguments)
