@@ -88,12 +88,8 @@ def customer(customer_number=0):
           .format(datetime.datetime.now(), customer_number, waiting_customers))
         
     if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut
-        mutex.release()                             # release so wake_up_barber can use the mutex
-
         wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is waking up the barber."
                        .format(datetime.datetime.now(), customer_number))
-
-        mutex.acquire()                             # acquire the mutex to check waiting_customers
 
         waiting_customers += 1                      # increment the number of waiting customers
 
