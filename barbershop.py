@@ -29,7 +29,7 @@ def barber():
     global min_cut_time
     global max_cut_time
 
-    mutex.acquire()
+    mutex.acquire()                        # acquire the mutex to check waiting_customers
 
     print("{0:%Y-%m-%d %H:%M:%S} - Barber finds {1} customers waiting."
           .format(datetime.datetime.now(), waiting_customers))
@@ -37,7 +37,8 @@ def barber():
     if waiting_customers > 0:
         print("{0:%Y-%m-%d %H:%M:%S} - Barber begins to perform a haircut.".format(datetime.datetime.now()))
 
-        waiting_customers -= 1
+        waiting_customers -= 1             # decrement the number of waiting customers
+
         mutex.release()
 
         rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
@@ -51,17 +52,24 @@ def barber():
 
         print("{0:%Y-%m-%d %H:%M:%S} - Barber is done performing a haircut.".format(datetime.datetime.now()))
     else:
-        mutex.release()
+        mutex.release()                    # didn't need to modify waiting_customers, so release the mutex
 
         go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
     if barbershop.acquire(False):
+        mutex.acquire()                    # acquire the mutex to check waiting_customers
+
         if waiting_customers == 0:         # exit if shop is closed and all waiting customers have been served
+            mutex.release()
             print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
             return
         else:                              # serve any remaining customers if the shop has closed
             print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
                   .format(datetime.datetime.now(), waiting_customers))
+            mutex.release()
+
+            # if customers are waiting, release the barbershop so we can check for waiting
+            # customers again on the next pass
             barbershop.release()
     barber()
 
@@ -75,13 +83,17 @@ def customer(customer_number=0):
     global waiting_customers
     global max_waiting_customers
 
+    mutex.acquire()                                 # acquire the mutex to check waiting_customers
     print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store, and finds {2} customer(s) waiting."
           .format(datetime.datetime.now(), customer_number, waiting_customers))
-    mutex.acquire()
         
     if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut
+        mutex.release()                             # release so wake_up_barber can use the mutex
+
         wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is waking up the barber."
                        .format(datetime.datetime.now(), customer_number))
+
+        mutex.acquire()                             # acquire the mutex to check waiting_customers
 
         waiting_customers += 1                      # increment the number of waiting customers
 
@@ -113,26 +125,15 @@ def get_random_interval(min_time, max_time):
 def go_to_sleep(message=""):
     global barber_sleeping_event
     global wake_up_barber_event
-    global mutex
-
-    mutex.acquire()
 
     if message:
         print(message)
     barber_sleeping_event.set()
 
-    mutex.release()
-
     wake_up_barber_event.wait()
-
-    # Acquire mutex to ensure the barber indicates they were awoken and no longer sleeping
-    # This ensures no incoming customer tries to wake up the barber after they already woke up.
-    mutex.acquire()
 
     wake_up_barber_event.clear()
     barber_sleeping_event.clear()
-
-    mutex.release()
 
 
 # go_to_sleep
@@ -142,11 +143,17 @@ def wake_up_barber(message=""):
     global wake_up_barber_event
     global waiting_customers
 
+    mutex.acquire()                                                # acquire the mutex to check waiting_customers
+
     if waiting_customers == 0 and barber_sleeping_event.is_set():  # if no waiting customers and barber is asleep
+        mutex.release()
+
         if message:
             print(message)
 
         wake_up_barber_event.set()                                 # wake up the barber
+    else:
+        mutex.release()
 
 
 # main
@@ -192,7 +199,7 @@ def main(args):
 
     print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop.".format(datetime.datetime.now()))  # when simulation time is up
     barbershop.release()                                   # release the barbershop resource (close the shop)
-    wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Barber finds no customers waiting.".format(datetime.datetime.now()))
+    wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Barber finds no customer(s) waiting.".format(datetime.datetime.now()))
 
     for thread in threads:                                 # cleanup child threads
         thread.join()
