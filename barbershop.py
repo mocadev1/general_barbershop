@@ -128,10 +128,11 @@ def go_to_sleep(message=""):
 
     if message:
         print(message)
-    barber_sleeping_event.set()
 
-    wake_up_barber_event.wait()
+    barber_sleeping_event.set()                     # set the barber state as sleeping
+    wake_up_barber_event.wait()                     # block here until the barber is woken
 
+    # clear the event flags so they can be used next time the barber goes to sleep
     wake_up_barber_event.clear()
     barber_sleeping_event.clear()
 
@@ -143,17 +144,11 @@ def wake_up_barber(message=""):
     global wake_up_barber_event
     global waiting_customers
 
-    mutex.acquire()                                                # acquire the mutex to check waiting_customers
-
-    if waiting_customers == 0 and barber_sleeping_event.is_set():  # if no waiting customers and barber is asleep
-        mutex.release()
-
+    if barber_sleeping_event.is_set():              # if the barber is asleep
         if message:
             print(message)
 
-        wake_up_barber_event.set()                                 # wake up the barber
-    else:
-        mutex.release()
+        wake_up_barber_event.set()                  # wake up the barber
 
 
 # main
