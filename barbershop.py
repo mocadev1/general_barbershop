@@ -7,7 +7,7 @@ import datetime
 
 barbershop = BoundedSemaphore(1)         # semaphore that indicates if the barbershop is available
 barber_resource = BoundedSemaphore(1)    # semaphore that indicates if the barber is available
-mutex = BoundedSemaphore(1)              # semaphore that insures exclusive access to the customers variable
+mutex = BoundedSemaphore(1)              # semaphore that allows exclusive access to the waiting_customers variable
 
 barber_sleeping_event = Event()          # event that, if set, indicates the barber is sleeping
 wake_up_barber_event = Event()           # event that, if set, will wake up the barber if they were sleeping
@@ -30,7 +30,13 @@ def barber():
     global max_cut_time
 
     mutex.acquire()
+
+    print("{0:%Y-%m-%d %H:%M:%S} - Barber finds {1} customers waiting."
+          .format(datetime.datetime.now(), waiting_customers))
+
     if waiting_customers > 0:
+        print("{0:%Y-%m-%d %H:%M:%S} - Barber begins to perform a haircut.".format(datetime.datetime.now()))
+
         waiting_customers -= 1
         mutex.release()
 
@@ -43,10 +49,10 @@ def barber():
         if not barber_resource.acquire(False):
             barber_resource.release()      # signal that the haircut is complete and the barber is available
 
-        print("{0:%Y-%m-%d %H:%M:%S} - Done performing a haircut.".format(datetime.datetime.now()))
+        print("{0:%Y-%m-%d %H:%M:%S} - Barber is done performing a haircut.".format(datetime.datetime.now()))
     else:
         mutex.release()
-        print(str(datetime.datetime.now()) + " - " + str(waiting_customers) + " customer(s) waiting.")
+
         go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
     if barbershop.acquire(False):
@@ -69,9 +75,8 @@ def customer(customer_number=0):
     global waiting_customers
     global max_waiting_customers
 
-    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store,"
-          .format(datetime.datetime.now(), customer_number) + " and finds "
-          + str(waiting_customers) + " customer(s) waiting.")
+    print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store, and finds {2} customer(s) waiting."
+          .format(datetime.datetime.now(), customer_number, waiting_customers))
     mutex.acquire()
         
     if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut

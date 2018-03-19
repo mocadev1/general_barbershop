@@ -1,12 +1,22 @@
 :: Pass in the python interpreter executable path as a command line arg
-:: ex. "C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\python.exe"
+:: ex. & ".\barbarshop driver.bat" "C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\python.exe"
 
 @echo off 
 
-set interpreterPath = %1
+:: argument validation
+if [%1] == [] (
+    echo The file path to the python interpreter python.exe must be provided as an argument when running this script
+    exit /B 1
+)
 
-echo Simulation 1 - Using default parameters
+if not exist %1 (
+    echo The python intrepreter was not found at the path specified: %1 
+    exit /B 1
+)
+
 :: print a new line
+echo.
+echo Simulation 1 - Using default parameters
 echo.
 %1 barbershop.py 
 
