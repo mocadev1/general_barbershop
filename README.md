@@ -1,45 +1,27 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# Barbershop Problem
+## The problem
+A barbershop consists of a waiting room with n chairs, and the barber room containing the
+barber chair. If there are no customers to be served, the barber goes to sleep. If a customer
+enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the
+barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the
+barber is asleep, the customer wakes up the barber.
+## Our solution
+`python barbershop.py` runs a default simulation with:
+ - 3 seats, 
+ - open store for 20 seconds
+ - [3, 8] seconds per haircut
+ - [1, 6] seconds between customer arrivals
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+ Also provided is a batch script `barbershop-driver.bat` that runs three basic simulations. Just provide the path to python.exe on your Windows machine as a parameter
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
-
----
-
-## Edit a file
-
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
-
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
-
----
-
-## Create a file
-
-Next, you’ll add a new file to this repository.
-
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
-
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
-
----
-
-## Clone a repository
-
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
-
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
-
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+ ### Arguments
+ -  -h, --help
+    -   show this help message and exit<br>
+ -  -s SEATS, --seats SEATS
+    -   number of seats in barbershop (default: 3)
+ -  -d DURATION, --duration DURATION
+    -   how long the barbershop is open (seconds) (default: 20)
+ -  -c CUTRANGE CUTRANGE, --cutrange CUTRANGE CUTRANGE
+    -   range of times for how long a haircut takes (seconds) (default: [3, 8])
+ -  -w WAITRANGE WAITRANGE, --waitrange WAITRANGE WAITRANGE
+    - range of times for customer arrivals (seconds) (default: [1, 6])
