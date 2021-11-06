@@ -18,8 +18,8 @@ barber_sleeping_event = Event()          # event that, if set, indicates the bar
 wake_up_barber_event = Event()           # event that, if set, will wake up the barber if they were sleeping
 
 CHAIRS = 4                               # the default capacity of the waiting room
-MIN_CUT_TIME = 1                         # the default minimum amount of time a haircut will take
-MAX_CUT_TIME = 3                         # the default maximum amount of time a haircut will take
+MIN_CUT_TIME = 3                         # the default minimum amount of time a haircut will take
+MAX_CUT_TIME = 8                         # the default maximum amount of time a haircut will take
 
 waiting_customers = 0                    # the number of customers in the waiting room
 
@@ -153,7 +153,7 @@ def wake_up_barber(message=""):
 
 
 def finish_program():
-    """Finish the program aggressively"""
+    """Finish the program aggressively without threads cleanup."""
     print('\nYou have pressed Esc key, finishing program...\n')
     os._exit(0)
 
@@ -161,7 +161,6 @@ def finish_program():
 # main
 # args: The parsed command line inputs
 # Spawns new customers while the barbershop is open.
-# Closes barbershop when the specified time limit has elapsed.
 def main(args):
     # add global variables to the local scope of this function
     global CHAIRS
@@ -173,10 +172,8 @@ def main(args):
     MIN_CUT_TIME, MAX_CUT_TIME = args.cutrange             # range of time it takes barber to cut hair
 
     # parse from args array into local variables
-    barber_duration = args.duration                        # number of seconds to run simulation
     min_customer_time, max_customer_time = args.waitrange  # range of seconds to wait between customer arrivals
 
-    finish = time.time() + barber_duration                 # set end simulation time
 
     print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop.".format(datetime.datetime.now()))
     barbershop.acquire()                                   # acquire the barbershop resource for use (open the shop)
@@ -187,7 +184,7 @@ def main(args):
     keyboard.add_hotkey('escape', finish_program)          # Finish the program pressing Esc
 
     customer_number = 0                                    # initialize customer counter
-    while time.time() < finish:                            # while simulation is running
+    while True:                            # while program is running
         customer_number += 1                               # increment customer counter
         threads.append(Thread(target=customer,             # add a customer thread
                               args=(customer_number,)))    # need a comma to pass single item into a tuple
@@ -201,12 +198,8 @@ def main(args):
 
         time.sleep(rand_sleep_time)                        # wait for next customer to arrive
 
-    print("{0:%Y-%m-%d %H:%M:%S} - Closing barbershop.".format(datetime.datetime.now()))  # when simulation time is up
-    barbershop.release()                                   # release the barbershop resource (close the shop)
-    wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Barber finds no customer(s) waiting.".format(datetime.datetime.now()))
-
-    for thread in threads:                                 # cleanup child threads
-        thread.join()
+    # for thread in threads:                               # cleanup child threads 
+    #     thread.join()                                    # (MUST BE DONE IN THE FUTURE, by not finish aggressively the program or managing an exception)
 
 
 arguments = 0
@@ -215,11 +208,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Run a simulation of the Sleeping Barber's Problem")
     # Interpret -s argument as number of seats in the barbershop
-    parser.add_argument('-s', '--seats', type=int, default=3,
+    parser.add_argument('-s', '--seats', type=int, default=4,
                         help="number of seats in barbershop")
-    # Interpret -d as ow long the barbershop simulation will run in seconds
-    parser.add_argument('-d', '--duration', type=int, default=20,
-                        help="how long the barbershop is open (seconds)")
     # Interpret -c as how long a haircut will take in seconds (range)
     parser.add_argument('-c', '--cutrange', type=int, default=[3, 8], nargs=2,
                         help="range of times for how long a haircut takes (seconds)")
