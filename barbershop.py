@@ -1,10 +1,15 @@
 from random import Random
 from threading import BoundedSemaphore, Event, Thread
 
+import os
 import argparse
 import time
 import datetime
 
+# Third party modules
+import keyboard # To finish the program pressing Esc key
+
+# Globals
 barbershop = BoundedSemaphore(1)         # semaphore that indicates if the barbershop is available
 barber_resource = BoundedSemaphore(1)    # semaphore that indicates if the barber is available
 mutex = BoundedSemaphore(1)              # semaphore that allows exclusive access to the waiting_customers variable
@@ -147,6 +152,13 @@ def wake_up_barber(message=""):
         wake_up_barber_event.set()                  # wake up the barber
 
 
+def finish_program():
+    """Finish the program aggressively"""
+    print('\nYou have pressed Esc key, finishing program...\n')
+    # Aggressive way to finish the program but its the way to do it due to Thread's exception handling
+    os._exit(0)
+
+
 # main
 # args: The parsed command line inputs
 # Spawns new customers while the barbershop is open.
@@ -172,6 +184,8 @@ def main(args):
 
     threads = [Thread(target=barber)]                      # add a barber thread to a thread array
     threads[0].start()                                     # start barber thread
+
+    keyboard.add_hotkey('escape', finish_program)          # Finish the program pressing Esc
 
     customer_number = 0                                    # initialize customer counter
     while time.time() < finish:                            # while simulation is running
