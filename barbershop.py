@@ -17,9 +17,9 @@ mutex = BoundedSemaphore(1)              # semaphore that allows exclusive acces
 barber_sleeping_event = Event()          # event that, if set, indicates the barber is sleeping
 wake_up_barber_event = Event()           # event that, if set, will wake up the barber if they were sleeping
 
-max_waiting_customers = 3                # the default capacity of the waiting room
-min_cut_time = 1                         # the default minimum amount of time a haircut will take
-max_cut_time = 1                         # the default maximum amount of time a haircut will take
+CHAIRS = 4                               # the default capacity of the waiting room
+MIN_CUT_TIME = 1                         # the default minimum amount of time a haircut will take
+MAX_CUT_TIME = 3                         # the default maximum amount of time a haircut will take
 
 waiting_customers = 0                    # the number of customers in the waiting room
 
@@ -31,8 +31,8 @@ def barber():
     global barber_resource
     global mutex
     global waiting_customers
-    global min_cut_time
-    global max_cut_time
+    global MIN_CUT_TIME
+    global MAX_CUT_TIME
 
     mutex.acquire()                        # acquire the mutex to check waiting_customers
 
@@ -46,7 +46,7 @@ def barber():
 
         mutex.release()
 
-        rand_haircut_time = get_random_interval(min_cut_time, max_cut_time)
+        rand_haircut_time = get_random_interval(MIN_CUT_TIME, MAX_CUT_TIME)
         time.sleep(rand_haircut_time)      # Simulate hair cut
 
         # check to make sure the barber_resource has been acquired before releasing, this prevents an exception
@@ -86,13 +86,13 @@ def customer(customer_number=0):
     global barber_resource
     global mutex
     global waiting_customers
-    global max_waiting_customers
+    global CHAIRS
 
     mutex.acquire()                                 # acquire the mutex to check waiting_customers
     print("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is entering the store, and finds {2} customer(s) waiting."
           .format(datetime.datetime.now(), customer_number, waiting_customers))
         
-    if waiting_customers < max_waiting_customers:   # if there are waiting room seats available, queue or get a haircut
+    if waiting_customers < CHAIRS:   # if there are waiting room seats available, queue or get a haircut
         wake_up_barber("{0:%Y-%m-%d %H:%M:%S} - Customer {1} is waking up the barber."
                        .format(datetime.datetime.now(), customer_number))
 
@@ -155,7 +155,6 @@ def wake_up_barber(message=""):
 def finish_program():
     """Finish the program aggressively"""
     print('\nYou have pressed Esc key, finishing program...\n')
-    # Aggressive way to finish the program but its the way to do it due to Thread's exception handling
     os._exit(0)
 
 
@@ -165,13 +164,13 @@ def finish_program():
 # Closes barbershop when the specified time limit has elapsed.
 def main(args):
     # add global variables to the local scope of this function
-    global max_waiting_customers
-    global min_cut_time
-    global max_cut_time
+    global CHAIRS
+    global MIN_CUT_TIME
+    global MAX_CUT_TIME
 
     # parse from args array into global variables, this information is needed in the threads
-    max_waiting_customers = args.seats                     # number of seats in the barbershop
-    min_cut_time, max_cut_time = args.cutrange             # range of time it takes barber to cut hair
+    CHAIRS = args.seats                     # number of seats in the barbershop
+    MIN_CUT_TIME, MAX_CUT_TIME = args.cutrange             # range of time it takes barber to cut hair
 
     # parse from args array into local variables
     barber_duration = args.duration                        # number of seconds to run simulation
