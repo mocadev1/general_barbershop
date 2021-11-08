@@ -8,7 +8,7 @@ barber is asleep, the customer wakes up the barber.
 ## My solution (forked from [alecwest/general_barbershop](https://github.com/alecwest/general_barbershop)) to satisfy my class requirements
 `python barbershop.py` runs a default simulation with:
  - 4 seats, 
- - open store for until you press Esc key
+ - open store until you press Esc key
  - [3, 8] seconds per haircut
  - [1, 6] seconds between customer arrivals
 
