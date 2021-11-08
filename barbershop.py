@@ -10,7 +10,6 @@ import datetime
 import keyboard # To finish the program pressing Esc key
 
 # Globals
-barbershop = BoundedSemaphore(1)         # semaphore that indicates if the barbershop is available
 barber_resource = BoundedSemaphore(1)    # semaphore that indicates if the barber is available
 mutex = BoundedSemaphore(1)              # semaphore that allows exclusive access to the waiting_customers variable
 
@@ -27,7 +26,6 @@ waiting_customers = 0                    # the number of customers in the waitin
 # barber
 def barber():
     # add global variables to the local scope of this function
-    global barbershop
     global barber_resource
     global mutex
     global waiting_customers
@@ -61,21 +59,6 @@ def barber():
 
         go_to_sleep("{0:%Y-%m-%d %H:%M:%S} - Barber is going to sleep.".format(datetime.datetime.now()))
 
-    if barbershop.acquire(False):
-        mutex.acquire()                    # acquire the mutex to check waiting_customers
-
-        if waiting_customers == 0:         # exit if shop is closed and all waiting customers have been served
-            mutex.release()
-            print("{0:%Y-%m-%d %H:%M:%S} - Done serving customers.".format(datetime.datetime.now()))
-            return
-        else:                              # serve any remaining customers if the shop has closed
-            print("{0:%Y-%m-%d %H:%M:%S} - Barbershop is closed, but {1} customers are still waiting."
-                  .format(datetime.datetime.now(), waiting_customers))
-            mutex.release()
-
-            # if customers are waiting, release the barbershop so we can check for waiting
-            # customers again on the next pass
-            barbershop.release()
     barber()
 
 
@@ -138,7 +121,7 @@ def go_to_sleep(message=""):
     barber_sleeping_event.clear()
 
 
-# go_to_sleep
+# wake_up_barber
 # message: The message to print when waking up the barber. Can be empty.
 def wake_up_barber(message=""):
     global barber_sleeping_event
@@ -176,7 +159,6 @@ def main(args):
 
 
     print("{0:%Y-%m-%d %H:%M:%S} - Opening barbershop.".format(datetime.datetime.now()))
-    barbershop.acquire()                                   # acquire the barbershop resource for use (open the shop)
 
     threads = [Thread(target=barber)]                      # add a barber thread to a thread array
     threads[0].start()                                     # start barber thread
